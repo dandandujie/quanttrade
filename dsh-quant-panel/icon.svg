@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Stock screener">
+  <defs>
+    <linearGradient id="quant-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#15233f"/>
+      <stop offset="1" stop-color="#0a1120"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#quant-bg)"/>
+  <rect x="1" y="1" width="62" height="62" rx="14" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+  <g stroke-linecap="round">
+    <path d="M19 13v38" stroke="#8fb4ff" stroke-width="2.6"/>
+    <rect x="13.5" y="23" width="11" height="17" rx="2.6" fill="#8fb4ff"/>
+    <path d="M32 19v31" stroke="#34d399" stroke-width="2.6"/>
+    <rect x="26.5" y="26" width="11" height="12" rx="2.6" fill="#34d399"/>
+    <path d="M45 16v36" stroke="#fbbf24" stroke-width="2.6"/>
+    <rect x="39.5" y="21" width="11" height="9" rx="2.6" fill="#fbbf24"/>
+  </g>
+</svg>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A股集合竞价选股、真实走势复盘与历史正确率研究平台">
+  <title>A9 Markets · 集合竞价研究</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=3.3">
+</head>
+<body>
+  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4zM20 4h-4a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h4z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M4 20h16"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M6.1 8a7 7 0 0 1 11.8-1L20 12M4 12l2.1 5a7 7 0 0 0 11.8-1"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 21h20zM12 9v5m0 3v.1"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5M9 13h6m-6 4h4"/></symbol>
+  </svg>
+
+  <header class="site-header">
+    <div class="header-main">
+      <button class="brand" data-go="workspace" aria-label="返回今日选股"><span class="brand-mark">A9</span><span>auction<span class="brand-period">.</span></span></button>
+      <label class="global-search"><svg><use href="#i-search"/></svg><input id="global-search" placeholder="搜索股票名称或代码" autocomplete="off"><kbd>/</kbd></label>
+      <div class="header-actions"><span class="live-badge"><i></i>免费行情</span><button class="button primary" id="performance-button"><svg><use href="#i-refresh"/></svg><span id="performance-text">更新实际表现</span></button><button class="icon-button" id="settings-button" title="策略参数"><svg><use href="#i-settings"/></svg></button></div>
+    </div>
+    <nav class="category-nav" aria-label="主导航">
+      <button class="nav-item active" data-view="workspace">今日选股</button>
+      <button class="nav-item" data-view="closing">尾盘选股</button>
+      <button class="nav-item" data-view="history">历史复盘</button>
+      <button class="nav-item" data-view="data">数据中心</button>
+      <button class="nav-item" data-view="rules">策略规则 <span>V1.2</span></button>
+      <span class="nav-clock"><span id="cn-clock">--:--:--</span> · 北京时间</span>
+    </nav>
+  </header>
+
+  <main class="content">
+    <section class="view active" id="view-workspace">
+      <div class="page-heading">
+        <div><div class="eyebrow"><span class="blue-dot"></span>09:25 集合竞价 · 弱转强研究</div><h1>今日选股 <span id="hero-date">—</span></h1><p><span id="hero-count">正在读取市场</span><span class="separator">/</span>开盘价理论买入，<span id="hero-cost">已计双边滑点与交易费用</span></p></div>
+        <div class="heading-actions"><label class="dataset-picker"><span id="source-badge" class="source-badge">LIVE</span><select id="dataset-select" aria-label="选择历史数据集"></select></label><button class="button secondary" id="sync-button"><svg><use href="#i-refresh"/></svg>同步行情</button><button class="button primary" id="run-button"><svg><use href="#i-play"/></svg><span>运行策略</span></button></div>
+      </div>
+
+      <div class="sync-ribbon" id="sync-ribbon"><span class="provider-icon">AK</span><div class="sync-copy"><strong>东方财富公开行情</strong><span id="sync-message">正在检查数据状态…</span></div><div class="sync-progress"><div><i id="sync-progress-bar"></i></div><span id="sync-progress-text">IDLE</span></div><span class="schedule-label" id="next-sync">09:26 选股 · 15:05 复盘</span></div>
+      <div id="market-alert" class="market-alert hidden"></div>
+
+      <div class="metric-grid">
+        <article class="metric-card"><div>涨停基因样本 <span>UNIVERSE</span></div><strong id="metric-scanned">—</strong><p>昨日及近 12 日涨停池并集</p></article>
+        <article class="metric-card"><div>主档合格 <span>QUALIFIED</span></div><strong id="metric-main">—</strong><p id="metric-pass-rate">通过率 —</p></article>
+        <article class="metric-card"><div>主档出击 <span>GREEN</span></div><strong id="metric-green" class="live-text">—</strong><p>同时通过全部熔断校验</p></article>
+        <article class="metric-card"><div>反包候选 <span>WATCHLIST</span></div><strong id="metric-candidates">—</strong><p>候选表现不计入主档胜率</p></article>
+      </div>
+
+      <div class="dashboard-grid">
+        <section class="panel screener-panel">
+          <div class="panel-header"><div><h2>选股结果</h2><span class="subheading">点击股票查看完整分时与因子</span></div><div class="table-tools"><button class="chip-toggle" id="doc-only" title="只显示作者当天截图里出现的标的">只看文档</button><button class="chip-toggle" id="auction-toggle" title="分时图是否显示 09:25 集合竞价那一笔">显示竞价</button><div class="seg-toggle" id="chart-toggle"><button class="active" data-chart="intraday">日内</button><button data-chart="five">五日</button><button data-chart="day">日K</button></div><select id="table-sort" aria-label="排序"><option value="return_rank">收益优先</option><option value="rank">模型排名</option><option value="score">评分优先</option><option value="return">收盘收益</option><option value="ratio">量比优先</option></select><button class="icon-button compact" id="export-button" title="导出含绩效CSV"><svg><use href="#i-download"/></svg></button></div></div>
+          <div class="pool-tabs" role="tablist"><button class="pool-tab active" data-pool="main">主档 <span id="main-tab-count">0</span></button><button class="pool-tab" data-pool="candidates">候选 <span id="candidate-tab-count">0</span></button><button class="pool-tab" data-pool="overflow">名额外 <span id="overflow-tab-count">0</span></button><button class="pool-tab" data-pool="excluded">已排除 <span id="excluded-tab-count">0</span></button></div>
+          <div class="quote-head" id="quote-head"><span>股票 / 模型</span><span id="chart-head-label">日内分时</span><span>开盘价</span><span>开盘涨幅</span><span id="live-price-label">现价</span><span>涨幅</span><span id="pnl-head" title="按 09:25 竞价价买入、现价卖出，扣双边滑点、佣金与印花税">收盘盈亏*</span><span>走势</span></div>
+          <div id="result-table"></div>
+          <div class="panel-footer"><span id="review-status"><i></i>等待实际行情复盘</span><span>价格单位：元 · 净收益已扣滑点与交易费用</span></div>
+        </section>
+
+        <aside class="right-column">
+          <section class="panel performance-card"><div class="panel-title"><h3>本次策略表现</h3><span class="small-badge" id="performance-state">待复盘</span></div><div class="performance-hero"><strong id="metric-win-rate">—</strong><span>主档收盘胜率</span></div><div class="performance-stats"><div><span>收盘封板率</span><strong id="metric-limit-rate">—</strong></div><div><span>平均净收益</span><strong id="metric-avg-return">—</strong></div></div><p class="card-note" id="performance-note">15:05 自动获取真实分钟行情，收盘收益大于 0 记为盈利。</p></section>
+          <section class="panel signal-card" id="signal-card"></section>
+          <section class="panel market-internals"><div class="panel-title"><h3>市场情绪</h3><span id="market-status-label" class="small-badge">—</span></div><div id="market-breadth"></div></section>
+          <section class="panel parameter-card"><div class="panel-title"><h3>当前参数</h3><button class="icon-button compact" id="edit-parameters"><svg><use href="#i-settings"/></svg></button></div><div class="parameter-list" id="parameter-list"></div><button class="text-button" id="view-rules-button">查看完整策略 <svg><use href="#i-arrow"/></svg></button></section>
+        </aside>
+      </div>
+      <div class="research-note"><svg><use href="#i-info"/></svg><p>本系统用于策略研究。实际表现按开盘价买入，并扣除双边滑点、佣金与印花税；仍不代表真实可成交收益。K 线与描述均来自真实行情，缺失时明确标记“未复盘”。</p></div>
+    </section>
+
+    <section class="view" id="view-closing">
+      <div class="page-heading"><div><div class="eyebrow"><span class="blue-dot"></span>14:46—14:57 · 尾盘先手</div><h1>尾盘选股</h1><p>缩量回踩、地板反核、点火与强势反包，博弈次日溢价；只看量价，不看题材。14:46 自动生成快照，打开即用。</p></div>
+        <div class="heading-actions"><label class="dataset-picker"><select id="closing-day" aria-label="选择交易日"></select></label><button class="button primary" id="closing-refresh"><svg><use href="#i-refresh"/></svg>重新扫描</button></div></div>
+      <div class="closing-rule" id="closing-rule"></div>
+      <div class="closing-meta" id="closing-meta">尾盘窗口 14:45—15:00 · 14:46 自动快照</div>
+      <div class="closing-tabs" id="closing-tabs"></div>
+      <section class="panel"><div class="panel-header"><div><h2>尾盘候选</h2><span class="subheading">缩量回踩 · 地板反核 · 点火 · 强势反包；点行看分时与规则明细</span></div><span class="small-badge" id="closing-count">—</span></div>
+        <div class="table-wrap" id="closing-table"><div class="chart-skeleton">正在读取尾盘快照…</div></div>
+      </section>
+      <section class="panel"><div class="panel-header"><div><h2>发帖人尾盘样本（11/05—11/06）</h2><span class="subheading">文投是 11-06 选、光洋是 11-05 选、东方是 11-06 选；11-09 只是兑现日。按 14:46 口径复核，不参与今日买入排序</span></div></div>
+        <div class="table-wrap" id="closing-samples"></div>
+      </section>
+    </section>
+
+    <section class="view" id="view-history">
+      <div class="page-heading"><div><div class="eyebrow"><span class="blue-dot"></span>每日归档 · 永久保存在本地 SQLite</div><h1>历史复盘</h1><p>按交易日回看当时选股与后续真实表现，不使用未来数据修正历史信号。</p></div></div>
+      <div class="history-metrics"><article><span>已复盘交易日</span><strong id="history-days">0</strong></article><article><span>累计主档样本</span><strong id="history-evaluated">0</strong></article><article><span>整体收盘胜率</span><strong id="history-win-rate" class="blue-text">—</strong></article><article><span>整体封板率</span><strong id="history-limit-rate">—</strong></article><article><span>平均净收益</span><strong id="history-avg-return">—</strong></article></div>
+      <section class="panel history-panel"><div class="panel-header"><div><h2>每日选股档案</h2><span class="subheading">正确率仅统计收盘数据完整的主档股票</span></div></div><div class="table-wrap" id="history-table"></div></section>
+    </section>
+
+    <section class="view" id="view-data">
+      <div class="page-heading"><div><div class="eyebrow"><span class="blue-dot"></span>免费数据 · 无需 API Key</div><h1>数据中心</h1><p>竞价、日线与分钟走势均由公开行情接口更新，并缓存在本地。</p></div><button class="button secondary" id="demo-button">载入演示数据</button></div>
+      <div class="data-layout"><section class="panel provider-panel"><div class="provider-head"><div class="provider-logo">AK</div><div><span>MULTI-SOURCE · 免费</span><h2>东方财富 + 腾讯行情</h2><p>涨停池 · 日线 · 分钟 · 5日资金流 · 龙虎榜 · 五档盘口</p></div><span class="small-badge live">已接入</span></div><div class="source-list" id="source-list"></div><div class="provider-stats"><div><span>当前状态</span><strong id="provider-status">检查中</strong></div><div><span>同步进度</span><strong id="provider-progress">—</strong></div><div><span>每日自动任务</span><strong>09:26 / 15:05</strong></div></div><div class="provider-breadth"><span>市场宽度</span><strong id="breadth-text">读取中…</strong><em id="breadth-time"></em></div><div class="provider-message" id="provider-message">正在读取同步任务…</div><div class="provider-actions"><button class="button primary" id="data-sync-button"><svg><use href="#i-refresh"/></svg>立即同步最近交易日</button><button class="button secondary" id="enrich-button">补齐资金流/龙虎榜</button></div></section><section class="panel quality-panel"><div class="panel-title"><h3>免费源字段边界</h3><svg><use href="#i-info"/></svg></div><ul class="quality-list" id="quality-list"></ul><p class="card-note">缺失字段按保守口径处理，不使用模拟行情补齐。</p></section></div>
+      <section class="panel import-panel"><div class="panel-title"><h3>CSV 备用导入</h3><a class="text-button" href="/api/import-template"><svg><use href="#i-download"/></svg>下载模板</a></div><div class="import-body"><div class="dropzone" id="dropzone"><input type="file" id="csv-file" accept=".csv" hidden><svg><use href="#i-upload"/></svg><strong>拖放 CSV 或点击选择</strong><span>UTF-8 · 最大 20MB</span><div class="selected-file hidden" id="selected-file"></div></div><div class="import-controls"><label>交易日期<input type="date" id="trading-day"></label><button class="button primary full" id="import-button" disabled><svg><use href="#i-upload"/></svg>导入并运行</button><p>CSV 与演示数据不会伪造实际走势。</p></div></div></section>
+      <section class="panel dataset-panel"><div class="panel-title"><h3>本地数据集</h3></div><div class="table-wrap" id="dataset-table"></div></section>
+    </section>
+
+    <section class="view" id="view-rules">
+      <div class="page-heading"><div><div class="eyebrow"><span class="blue-dot"></span>策略规范 · 参数随每次运行保存</div><h1>Weak → Strong <span>V2.2</span></h1><p>这是你自己的竞价选股算法：结构来自对原帖的反推，参数用 10/29—11/06 的实盘样本标定，之后由你自己迭代。下方记录参数来源与原帖样本对照（参考，非目标）。</p></div></div>
+      <div class="rules-grid"><section class="panel rule-card"><span>01 / 主档过滤</span><h2>涨停基因与竞价承接</h2><p>沪深主板非 ST，流通市值 15—250 亿；近 12 日有涨停基因且昨日连板 ≤ 2；昨日换手 1.2%—35%。</p><div class="formula">3.00% ≤ Gap ≤ 7.50%<br>量比 ≥ 0.5% · 竞价换手 ≥ 0.02% · 成交额 ≥ ¥200万</div></section><section class="panel rule-card"><span>02 / 因子评分</span><h2>非线性竞价评分</h2><p>涨幅甜点给正分；量比、换手、市值在甜点区内不扣分、区外按对数距离扣分；封单强度与末端抢筹是小权重加分。</p><div class="formula">S = clamp(50 + 0.8 × (涨幅甜点 − 量比/换手/市值偏离 + 封单) + 末端抢筹, 0, 100)<br>收益优先分 = 0.40×基因 + 0.25×非昨涨停 + 0.15×低量比 + 0.10×市值 + 0.10×昨日换手（横截面百分位）</div></section><section class="panel rule-card"><span>03 / 熔断机制</span><h2>唯一出击信号 ✅ 主档</h2><p>主档池第一、得分、涨幅、量比与情绪主升期同时成立，才点亮绿标；其余一律「主档合格·非top1」。全市场涨停家数未知时按不通过处理。</p><div class="formula">绿标：Local #1 ∧ Score ≥ 65 ∧ Gap ≥ 6.0% ∧ Rv ≥ 10% ∧ 昨日涨停 ≥ 80家<br>稳健首选：主档池内 基因 ≥ 2、流通市值 ≥ 40 亿、竞价额 ≥ 1000 万，按收益优先分取最高；无则观察</div></section><section class="panel rule-card"><span>04 / 实际复盘</span><h2>固定三点绩效口径</h2><p>以 09:30 正式开盘价为理论成本，记录 11:30 与 15:00 的净收益（扣双边滑点、佣金、印花税）；仅主档纳入胜率统计。</p><div class="formula">Net = 卖出到手 ÷ 买入成本 - 1<br>收盘盈利 &gt; 0 · 封板价 = 昨收 × 1.10</div></section></div>
+      <section class="panel doccheck-panel">
+        <div class="panel-header"><div><h2>原帖样本对照</h2><span class="subheading">原帖名单只作参考基准，不再作为必须命中的目标</span></div><div class="doccheck-score" id="doccheck-score">—</div></div>
+        <div class="doccheck-body" id="doccheck-body"><div class="chart-skeleton">正在读取文档样本…</div></div>
+      </section>
+      <section class="panel reverse-panel">
+        <div class="panel-header"><div><h2>算法来源与参数</h2><span class="subheading">结构来自原帖反推；权重用 10/30—11/05 四天名单标定，之后按你的判断迭代</span></div><span class="doccheck-score good">4 天 21 只 · 16/17 顺序约束</span></div>
+        <div class="reverse-body">
+          <p class="reverse-lead">结论：发帖人的排序不是"量比越大越好"的线性打分。只有把 <b>竞价昨量比、昨日换手、流通市值</b> 都当成<b>区间（甜点区）</b>来打分、再叠加 <b>封单强度</b>，两天的先后次序才能同时被一个公式复现。文档里"量比越大越好"的方向是反推错的一处。</p>
+          <table class="result-table reverse-table">
+            <thead><tr><th>因子（区间打分）</th><th>甜点区</th><th>当前权重</th><th>说明</th></tr></thead>
+            <tbody>
+              <tr><td>竞价昨量比</td><td>7.5% — 30%</td><td><b>17.23</b></td><td>区间内不扣分，区间外按对数距离扣分</td></tr>
+              <tr><td>昨日换手率</td><td>8% — 20%</td><td><b>26.04</b></td><td>过高视为筹码涣散，过低视为缩量一字</td></tr>
+              <tr><td>流通市值</td><td>35 — 75 亿</td><td><b>34.65</b></td><td>权重最高，解释了大市值票被压到后面</td></tr>
+              <tr><td>竞价涨幅甜点</td><td>4.1% — 6.6%</td><td><b>1.375 × 0—28</b></td><td>唯一给正分的因子；7.5% 以上按斜率扣到 0</td></tr>
+              <tr><td>昨日封单强度</td><td>越大越好</td><td><b>0.10</b></td><td>封板资金/流通市值，最高按 20% 封顶</td></tr>
+              <tr><td>末端抢筹</td><td>越大越好</td><td><b>0—20 加分</b></td><td>仅 09:25 盘口可取时计入，历史回放不补</td></tr>
+            </tbody>
+          </table>
+          <p class="reverse-lead" style="margin-top:14px"><b>证据口径</b>：只用截图里的「名单 / ⭐核心 / 主档标签 / 名次」当算法输出；帖子正文属于发帖人的市场观点（为什么看好某只、谁是龙头、跨年妖股等），<b>不作为算法依据</b>。截图与正文冲突时，以截图为准。</p>
+        <p class="reverse-lead"><b>⭐核心 的判定（本系统自定义，纯量价）</b>：昨日封单强度 ≥ 2%（资金主攻）、已是二板（梯队地位）、或 T-1 龙虎榜净买额 ≥ 2000 万；满足任一即为 ⭐核心。题材/概念只用于详情展示，不参与评分、过滤或 ✓/✗ 判定。作者截图的 ⭐ 含个人主线判断，数据层面无法完全复现，因此不作为目标。</p>
+          <div class="reverse-grid">
+            <div><span>11/03 文档 7 只</span><strong>顺序全部命中</strong><p>祥源 → 七匹狼 → 郑中 → 掌阅 → 欢瑞 → 水井坊 → 红太阳</p></div>
+            <div><span>11/04 文档 5 只</span><strong>顺序全部命中</strong><p>鲁阳 → 引力 → 浙文 → 传智 → 金达威</p></div>
+            <div class="reverse-gap"><span>仍缺的一环</span><strong>入池规则 + 一处次序冲突</strong><p>现行硬过滤按文档样本反推（200 万竞价额、0.5% 量比、250 亿市值），优先保证样本入池；如果把它收紧到更“实盘”的流动性门槛（如 700 万 / 1.4% / 150 亿），会漏掉引力传媒、传智教育、城市传媒、西部黄金等样本。两套口径的取舍在「策略参数」里可调。</p></div>
+          </div>
+        </div>
+      </section>
+      <section class="panel calibration-panel">
+        <div class="panel-header"><div><h2>与文档原值的偏差登记</h2><span class="subheading">文档散文阈值会把它自己列出的样本拦掉，下列参数按样本反推，随运行一起归档</span></div></div>
+        <div class="table-wrap" id="calibration-table"></div>
+      </section>
+    </section>
+  </main>
+  <footer class="app-footer"><span>A9 MARKETS · LOCAL RESEARCH</span><span>模型输出仅供研究，不构成投资建议</span></footer>
+
+  <div class="overlay hidden" id="drawer-overlay"></div><aside class="detail-drawer" id="detail-drawer" aria-hidden="true"><div id="drawer-content"></div></aside>
+  <div class="modal-backdrop hidden" id="config-modal"><section class="config-modal" role="dialog" aria-modal="true" aria-labelledby="config-title"><div class="modal-header"><div><span>STRATEGY CONFIGURATION</span><h2 id="config-title">策略参数</h2><p>保存后立即运行，并随历史结果归档。</p></div><button class="icon-button" id="close-config"><svg><use href="#i-close"/></svg></button></div><form id="config-form"><div class="config-grid"><fieldset><legend>主档硬过滤</legend><label>竞价涨幅下限 (%)<input type="number" step="0.01" data-config="main_open_min"></label><label>竞价涨幅上限 (%)<input type="number" step="0.01" data-config="main_open_max"></label><label>最低竞价昨量比 (%)<input type="number" step="0.1" data-config="main_min_vol_ratio"></label><label>最低竞价换手 (%)<input type="number" step="0.01" data-config="main_min_auction_turnover"></label><label>最低竞价成交额 (元)<input type="number" step="1000000" data-config="main_min_auction_amount"></label><label>昨日换手率 (%)<div class="dual-input"><input type="number" step="0.1" data-config="yest_turnover_min"><input type="number" step="0.1" data-config="yest_turnover_max"></div></label></fieldset><fieldset><legend>绿标熔断锁</legend><label>绝对得分阈值<input type="number" step="0.5" data-config="green_min_score"></label><label>滑点（单边 %）<input type="number" step="0.05" data-config="slippage_pct"></label><label>佣金/过户费（单边 %）<input type="number" step="0.001" data-config="fee_pct"></label><label>印花税（卖出 %）<input type="number" step="0.01" data-config="stamp_duty_pct"></label><label>最低竞价涨幅 (%)<input type="number" step="0.01" data-config="green_min_open_pct"></label><label>最低竞价昨量比 (%)<input type="number" step="0.1" data-config="green_min_vol_ratio"></label><label>流通市值（换手推算，亿）<div class="dual-input"><input type="number" step="1" data-config="free_mcap_min"><input type="number" step="1" data-config="free_mcap_max"></div></label></fieldset><fieldset><legend>候选池与风控</legend><label>主档输出条数<input type="number" min="1" max="30" step="1" data-config="main_pool_size"></label><label>候选输出条数<input type="number" min="1" max="30" step="1" data-config="candidate_pool_size"></label><label>候选涨幅区间 (%)<div class="dual-input"><input type="number" step="0.1" data-config="candidate_open_min"><input type="number" step="0.1" data-config="candidate_open_max"></div></label><label>候选最低昨量比 (%)<input type="number" step="0.1" data-config="candidate_min_vol_ratio"></label><label>候选最低成交额 (元)<input type="number" step="1000000" data-config="candidate_min_auction_amount"></label><label>退潮平均涨幅阈值 (%)<input type="number" step="0.1" data-config="risk_avg_open_pct"></label><label>竞价跌停家数阈值<input type="number" step="1" data-config="risk_limit_down_count"></label></fieldset></div><div class="modal-actions"><button type="button" class="button secondary" id="reset-config">恢复默认值</button><div><button type="button" class="button secondary" id="cancel-config">取消</button><button type="submit" class="button primary">保存并运行</button></div></div></form></section></div>
+  <div class="toast hidden" id="toast"></div>
+  <script src="/static/app.js?v=3.6"></script>
+</body>
+</html>

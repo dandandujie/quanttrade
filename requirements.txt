@@ -1,0 +1,10 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+python-multipart==0.0.20
+akshare==1.17.63
+pandas==2.3.3
+polars==1.40.1
+pyarrow==22.0.0
+requests==2.32.3
+apscheduler==3.10.4

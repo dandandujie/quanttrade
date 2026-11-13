@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
+*.log
+
+# 运行期数据/缓存：数据库、分钟/日线 parquet、快照、日志
+data/
+*.parquet
+*.db
+*.db-*
+
+# 浏览器/工具缓存
+_ep9/
+node_modules/
+_check*.py
+*.备份.docx
