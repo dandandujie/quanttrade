@@ -239,14 +239,38 @@ _HISTORY_EAST_FAILS = 0
 _HISTORY_LOCK = threading.Lock()
 
 
+def _infer_shares_from_quote(code: str) -> float:
+    try:
+        quote = sources.tencent_quotes([code]).get(str(code).zfill(6))
+    except Exception:  # noqa: BLE001
+        return 0.0
+    if not quote:
+        return 0.0
+    price = numeric(quote.get("price")) or numeric(quote.get("prev_close"))
+    float_mcap = numeric(quote.get("float_mcap"))
+    return float_mcap * 1e8 / price if price > 0 and float_mcap > 0 else 0.0
+
+
+def _fill_turnover(bars: list[dict[str, Any]], shares: float) -> None:
+    if shares <= 0:
+        return
+    for bar in bars:
+        if numeric(bar.get("turnover")) <= 0 and numeric(bar.get("volume")) > 0:
+            bar["turnover"] = round(numeric(bar["volume"]) * 100.0 / shares * 100.0, 4)
+
+
 def fetch_history(code: str, start: date, end: date, shares: float = 0.0) -> list[dict[str, Any]]:
     global _HISTORY_EAST_FAILS
+    if shares <= 0:
+        shares = _infer_shares_from_quote(code)
     cached = db.get_daily_bars(code, start.isoformat(), end.isoformat())
-    # 必须同时满足：缓存里含请求的末日 + 起始日覆盖够长，否则重新拉取
+    # 零换手缓存不能复用：旧版 Sina/腾讯兜底在 shares=0 时写入 turnover=0，
+    # 直接复用会让这批票永远被“昨日换手率无效”误杀。
     if (
         cached
         and cached[-1]["trade_date"] == end.isoformat()
         and cached[0]["trade_date"] <= (start + timedelta(days=12)).isoformat()
+        and numeric(cached[-1].get("turnover")) > 0
     ):
         return cached
     # 先走不依赖代理的 Sina/腾讯，避免东财无响应把同步拖死。
@@ -254,6 +278,7 @@ def fetch_history(code: str, start: date, end: date, shares: float = 0.0) -> lis
     if not fallback:
         fallback = sources.tencent_daily(code, start, end, shares)
     if fallback:
+        _fill_turnover(fallback, shares)
         db.save_daily_bars(code, fallback)
         return fallback
     # 两个直连源都失败后才尝试东财；最多 2 次，避免长时间占用线程。
@@ -268,6 +293,7 @@ def fetch_history(code: str, start: date, end: date, shares: float = 0.0) -> lis
     if frame is None or frame.empty:
         return cached
     bars = [bar_from_row(row) for _, row in frame.iterrows()]
+    _fill_turnover(bars, shares)
     db.save_daily_bars(code, bars)
     return bars
 
@@ -592,17 +618,25 @@ def sync_market(job_id: str, requested_day: str | None = None, limit: int | None
             failures[code] = "昨日停牌或日线缺失"
             continue
         yest_volume = yesterday["volume"] * 100
-        if yesterday["turnover"] <= 0 or yest_volume <= 0:
-            failures[code] = "昨日换手率或成交量无效"
-            continue
-        free_float_shares = yest_volume / (yesterday["turnover"] / 100)
         info = recent_info.get(code, {
             "name": POST_WATCHLIST.get(code, {}).get("name", code),
             "industry": "",
             "free_market_cap": 0,
         })
-        is_zt = code in yesterday_pool
         zt_info = yesterday_pool.get(code, {})
+        yest_turnover = numeric(yesterday.get("turnover"))
+        # 旧缓存/兜底日线可能缺换手率；涨停池有流通市值，可用 流通市值/收盘价 反推股本。
+        if yest_turnover <= 0 and yest_volume > 0:
+            pool_cap = numeric(zt_info.get("free_market_cap")) or numeric(info.get("free_market_cap"))
+            if pool_cap > 0 and numeric(yesterday["close"]) > 0:
+                shares = pool_cap * 1e8 / numeric(yesterday["close"])
+                yest_turnover = yest_volume / shares * 100.0
+                yesterday["turnover"] = round(yest_turnover, 4)
+        if yest_turnover <= 0 or yest_volume <= 0:
+            failures[code] = "昨日换手率或成交量无效"
+            continue
+        free_float_shares = yest_volume / (yest_turnover / 100)
+        is_zt = code in yesterday_pool
         # 免费源没有自由流通股本；用昨日成交量 / 换手率反推流通股本，再乘收盘价。
         # 字段名 free_market_cap 保留以兼容旧数据集，页面标注为“流通市值（换手推算）”。
         market_cap = free_float_shares * yesterday["close"] / 100000000
@@ -624,7 +658,7 @@ def sync_market(job_id: str, requested_day: str | None = None, limit: int | None
             "zt_count_4": sum(code in pools[day] for day in pool_days[-4:]),
             "zt_count_8": sum(code in pools[day] for day in pool_days[-8:]),
             "zt_count_12": sum(code in pools[day] for day in pool_days),
-            "yest_turnover": yesterday["turnover"],
+            "yest_turnover": yest_turnover,
             "yest_high": yesterday["high"],
             "yest_low": yesterday["low"],
             "yest_pct": yesterday["pct"],

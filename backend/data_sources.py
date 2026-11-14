@@ -264,7 +264,7 @@ def tencent_daily(code: str, start: date, end: date, shares: float = 0.0) -> lis
     days = max(60, (end - start).days + 30)
     url = (
         "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?"
-        f"param={symbol},day,,,{days},qfq"
+        f"param={symbol},day,,,{days},"
     )
     try:
         request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -273,7 +273,7 @@ def tencent_daily(code: str, start: date, end: date, shares: float = 0.0) -> lis
     except Exception:  # noqa: BLE001
         return []
     block = ((payload.get("data") or {}).get(symbol) or {})
-    rows = block.get("qfqday") or block.get("day") or []
+    rows = block.get("day") or []
     if not rows:
         return []
     bars: list[dict[str, Any]] = []

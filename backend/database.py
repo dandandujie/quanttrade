@@ -372,6 +372,11 @@ def get_latest_run(dataset_id: int) -> dict[str, Any] | None:
 
 
 def save_daily_bars(code: str, bars: list[dict[str, Any]]) -> None:
+    # turnover=0 通常是兜底源缺流通股本写出的脏数据；落库后会让后续同步
+    # 永远复用“昨日换手无效”的坏缓存，因此直接拒绝写入。
+    bars = [bar for bar in bars if float(bar.get("turnover") or 0) > 0]
+    if not bars:
+        return
     with connect() as conn:
         conn.executemany(
             """
