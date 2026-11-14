@@ -63,6 +63,10 @@ def keep_proxy() -> bool:
 def configure_network() -> None:
     if keep_proxy():
         return
+    # AKShare 内部直接用 requests，某些环境即使写了 NO_PROXY 仍会走系统代理；
+    # 本进程只访问国内行情源，直接清空代理变量，避免「代理已断开」导致全市场接口 500。
+    for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
+        os.environ.pop(key, None)
     current = os.environ.get("NO_PROXY") or os.environ.get("no_proxy") or ""
     entries = [item.strip() for item in current.split(",") if item.strip()]
     for host in DOMESTIC_HOSTS:
