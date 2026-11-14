@@ -95,12 +95,14 @@ def parse_tencent(text: str) -> dict[str, dict[str, Any]]:
 
 def _fetch_tencent_batch(codes: list[str]) -> dict[str, dict[str, Any]]:
     symbols = ",".join(tencent_symbol(code) for code in codes)
-    request = urllib.request.Request(
+    text = network.direct_client.get_text(
         TENCENT_ENDPOINT.format(symbols=symbols),
-        headers={"User-Agent": "Mozilla/5.0", "Referer": "https://gu.qq.com/"},
+        headers={"Referer": "https://gu.qq.com/"},
+        encoding="gbk",
+        timeout=TENCENT_TIMEOUT,
+        attempts=2,
     )
-    with urllib.request.urlopen(request, timeout=TENCENT_TIMEOUT) as response:
-        return parse_tencent(response.read().decode("gbk", errors="replace"))
+    return parse_tencent(text)
 
 
 def tencent_quotes(codes: list[str], attempts: int = 2) -> dict[str, dict[str, Any]]:

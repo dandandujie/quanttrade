@@ -321,7 +321,9 @@ python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 
 ## 数据边界（免费源）
 
-多源免费行情，不需要 API Key：
+多源免费行情，不需要 API Key。国内行情请求统一走 `backend/network.py` 的 `DirectHttpClient`：
+显式 `trust_env=False` 旁路系统代理、复用连接池，并补全东财/腾讯/新浪子域名的 `NO_PROXY`；
+需要强制走系统代理时设置 `QUANT_KEEP_PROXY=1`。
 
 | 字段 | 来源 | 口径 |
 | --- | --- | --- |
