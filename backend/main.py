@@ -405,17 +405,39 @@ def _quote(code: str) -> dict:
 _SPOT_CACHE: dict[str, tuple[float, dict]] = {}
 
 
-def _spot_map() -> dict[str, dict]:
-    """全市场快照（60 秒缓存），一次调用拿全部现价/涨幅/成交量。"""
+def _spot_map(codes: list[str] | None = None) -> dict[str, dict]:
+    """全市场快照（60 秒缓存）；东财断连时用腾讯行情按需补齐 codes。"""
     import time as _time
 
     import akshare as ak
 
+    from .data_sources import tencent_quotes
     from .market_data import numeric
     hit = _SPOT_CACHE.get("all")
-    if hit and _time.time() - hit[0] < 60:
+    if not codes and hit and _time.time() - hit[0] < 60:
         return hit[1]
-    frame = ak.stock_zh_a_spot_em()
+    try:
+        frame = ak.stock_zh_a_spot_em()
+    except Exception:  # noqa: BLE001 - 东财全市场快照断连时降级到腾讯
+        if not codes:
+            raise
+        quotes = tencent_quotes(codes)
+        out = {}
+        for code, quote in quotes.items():
+            out[code] = {
+                "name": quote["name"],
+                "price": quote["price"],
+                "pct": quote["pct"],
+                # 腾讯成交量是股，AKShare/日线口径是手。
+                "volume": quote["volume"] / 100.0,
+                "amount": quote["amount"],
+                "high": quote["high"],
+                "low": quote["low"],
+                "open": quote["open"],
+                "prev_close": quote["prev_close"],
+                "volume_ratio": quote["volume_ratio"],
+            }
+        return out
     out = {}
     for _, row in frame.iterrows():
         code = str(row["代码"]).zfill(6)
@@ -431,7 +453,8 @@ def _spot_map() -> dict[str, dict]:
             "prev_close": numeric(row["昨收"]),
             "volume_ratio": numeric(row["量比"]),
         }
-    _SPOT_CACHE["all"] = (_time.time(), out)
+    if not codes:
+        _SPOT_CACHE["all"] = (_time.time(), out)
     return out
 
 
@@ -768,12 +791,27 @@ def _merge_track_candidates(by_track: dict[str, list[dict]], limit: int) -> list
     )[:limit]
 
 
+def _closing_stock_pool(dataset: dict) -> list[dict]:
+    """尾盘样本池：合并最近 10 天各数据集，避免当天同步不完整时只剩几十只。"""
+    from datetime import date as _date
+
+    day = _date.fromisoformat(dataset["trading_day"])
+    cutoff = (day - timedelta(days=10)).isoformat()
+    merged: dict[str, dict] = {}
+    for item in db.list_datasets():
+        if item.get("source") != "akshare" or item["trading_day"] < cutoff:
+            continue
+        for stock in db.get_stocks(item["id"]):
+            merged.setdefault(stock["code"], stock)
+    return list(merged.values())
+
+
 def _closing_payload(dataset: dict, top: int) -> dict:
     """扫描尾盘候选：预筛 → 并行取当日 5 分钟线 → 14:15—14:40 尾盘量能/评分。"""
     from datetime import date as _date
 
-    stocks = db.get_stocks(dataset["id"])
-    spot = _spot_map()
+    stocks = _closing_stock_pool(dataset)
+    spot = _spot_map([stock["code"] for stock in stocks])
     day = dataset["trading_day"]
     start = (_date.fromisoformat(day) - timedelta(days=90)).isoformat()
 
