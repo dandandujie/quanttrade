@@ -216,6 +216,15 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="竞价·0925选股系统", version="2.2.0", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def no_stale_frontend(request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "auction-0925"}
