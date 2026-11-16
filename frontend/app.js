@@ -5,7 +5,7 @@ const state = {
   datasets: [], selectedDataset: null, result: null, config: null, defaults: null,
   pool: 'main', runs: [], file: null, marketStatus: null, pollTimer: null,
   toastTimer: null, search: '', sort: 'return_rank', docCheck: null,
-  chart: 'intraday', onlyDoc: false, marks: {}, bars: new Map(), fiveBars: new Map(), quotes: new Map(), isLive: false,
+  chart: 'intraday', onlyDoc: false, marks: {}, bars: new Map(), fiveBars: new Map(), thumbData: new Map(), quotes: new Map(), isLive: false,
   showAuction: false, loadingThumbs: false, quoteTimer: null, datasetKey: null,
   closingPoll: null, closingPolled: false, closingTrack: 'all', closingReplayId: null,
   signals: null, signalTimer: null,
@@ -152,6 +152,7 @@ function renderResult() {
     state.quotes.clear();
     state.fiveBars.clear();
     state.bars.clear();
+    state.thumbData.clear();
   }
   $('#hero-date').textContent = dataset.trading_day;
   $('#hero-count').textContent = `${summary.scanned} 只涨停基因样本`;
@@ -386,15 +387,21 @@ function dailyThumb(bars, width = 232, height = 76) {
   return `<svg class="mini-chart daily-thumb" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="近15日K线"><title>近15日K线 · 金线MA5 蓝线MA10</title>${shapes}${maLines}</svg>`;
 }
 
+function thumbShell(code, kind, svg, bars, prevClose) {
+  if (!svg) return '';
+  state.thumbData.set(code, { kind, bars: bars || [], prevClose });
+  return `<div class="thumb-chart" data-thumb-chart="${code}" data-thumb-kind="${kind}">${svg}<div class="thumb-cross-v"></div><div class="thumb-cross-h"></div><div class="thumb-tip"></div></div>`;
+}
+
 function thumbFor(item) {
   if (state.chart === 'five') {
     const bars = state.fiveBars.get(item.code);
     if (bars === undefined) return `<div class="thumb-skeleton" data-thumb="${item.code}"></div>`;
-    return bars?.length ? fiveDayChart(bars, item.input?.prev_close) : '<div class="no-chart">无分钟数据</div>';
+    return bars?.length ? thumbShell(item.code, 'five', fiveDayChart(bars, item.input?.prev_close), bars, item.input?.prev_close) : '<div class="no-chart">无分钟数据</div>';
   }
   if (state.chart === 'intraday') {
     const performance = performanceFor(item);
-    if (performance?.series?.length) return intradayChart(performance, item.input?.prev_close);
+    if (performance?.series?.length) return thumbShell(item.code, 'intraday', intradayChart(performance, item.input?.prev_close), performance.series, item.input?.prev_close);
     const day = state.result?.dataset?.trading_day;
     const loaded = state.fiveBars.get(item.code);
     const today = (loaded || []).filter(b => b.date === day);
@@ -403,15 +410,65 @@ function thumbFor(item) {
         ? `<div class="thumb-skeleton" data-thumb="${item.code}"></div>`
         : `<div class="no-chart">${state.isLive ? '暂无盘中数据' : '无分钟数据'}</div>`;
     }
-    return intradayChart({ series: today, step5: true, entry_price: item.input?.open_price }, item.input?.prev_close);
+    return thumbShell(item.code, 'intraday', intradayChart({ series: today, step5: true, entry_price: item.input?.open_price }, item.input?.prev_close), today, item.input?.prev_close);
   }
   const bars = state.bars.get(item.code);
   if (bars === undefined) return `<div class="thumb-skeleton" data-thumb="${item.code}"></div>`;
   if (!bars?.length) return '<div class="no-chart">无日线缓存</div>';
   const t = todayBar(item);
   const merged = t && (!bars.length || bars.at(-1).trade_date !== t.trade_date) ? [...bars, t] : bars;
-  return dailyThumb(merged);
+  return thumbShell(item.code, 'day', dailyThumb(merged), merged.slice(-15), item.input?.prev_close);
 }
+
+function hideThumbHover(except) {
+  document.querySelectorAll('.thumb-chart.hovered').forEach(chart => {
+    if (chart !== except) chart.classList.remove('hovered');
+  });
+}
+
+function moveThumbHover(event) {
+  const chart = event.target instanceof Element ? event.target.closest('.thumb-chart') : null;
+  if (!chart) { hideThumbHover(); return; }
+  const payload = state.thumbData.get(chart.dataset.thumbChart);
+  const bars = payload?.bars || [];
+  if (!bars.length) { hideThumbHover(chart); return; }
+  hideThumbHover(chart);
+  chart.classList.add('hovered');
+
+  const rect = chart.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  const index = payload.kind === 'day'
+    ? Math.min(bars.length - 1, Math.floor(ratio * bars.length))
+    : Math.min(bars.length - 1, Math.round(ratio * (bars.length - 1)));
+  const bar = bars[index];
+  const price = Number(bar.close);
+  const priceText = Number.isFinite(price) ? price.toFixed(2) : '--';
+  let label = bar.time || '';
+  if (payload.kind === 'day') label = bar.trade_date || '';
+  else if (bar.date) label = `${bar.date.slice(5)} ${bar.time || ''}`.trim();
+
+  const x = payload.kind === 'day'
+    ? (index + .5) / bars.length * rect.width
+    : bars.length > 1 ? index / (bars.length - 1) * rect.width : rect.width / 2;
+  const y = event.clientY - rect.top;
+  chart.querySelector('.thumb-cross-v').style.left = `${x}px`;
+  chart.querySelector('.thumb-cross-h').style.top = `${y}px`;
+
+  const tip = chart.querySelector('.thumb-tip');
+  tip.textContent = `${label}  ${priceText}`;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = x + 9;
+  if (left + tw > rect.width - 4) left = x - tw - 9;
+  left = Math.max(4, Math.min(rect.width - tw - 4, left));
+  let top = y - th - 9;
+  if (top < 4) top = y + 9;
+  top = Math.max(4, Math.min(rect.height - th - 4, top));
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
+}
+
+document.addEventListener('pointermove', moveThumbHover, { passive: true });
 
 function todayBar(item) {
   const day = state.result?.dataset?.trading_day;
@@ -1086,8 +1143,9 @@ function closingTrackText(item) {
 const CLOSING_HEAD = '<div class="closing-head"><span>股票 / 模型</span><span>日内分时</span><span>现价</span><span>涨幅</span><span>低点</span><span>收盘离低点</span><span>评分</span><span>均线 / 基因</span></div>';
 
 function closingRow(item) {
-  const chart = (item.series || []).length
-    ? intradayChart({ series: item.series, step5: true, entry_price: item.open }, item.prev_close || 0)
+  const series = item.series || [];
+  const chart = series.length
+    ? thumbShell(item.code, 'intraday', intradayChart({ series, step5: true, entry_price: item.open }, item.prev_close || 0), series, item.prev_close || 0)
     : '<div class="no-chart">无分钟数据</div>';
   const ma = item.above_ma5 && item.above_ma10 ? 'MA5 / MA10 之上'
     : item.above_ma5 ? 'MA5 之上' : item.above_ma10 ? 'MA10 之上' : '均线之下';
