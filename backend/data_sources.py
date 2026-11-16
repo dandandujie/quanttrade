@@ -339,6 +339,54 @@ def sina_daily(code: str, start: date, end: date, shares: float = 0.0) -> list[d
     return bars
 
 
+def sina_minutes(code: str, days: int = 5) -> list[dict[str, Any]]:
+    """Sina 5 分钟 K 线，兜底东财分钟接口断连时的缩略图/尾盘扫描。
+
+    返回字段与 minutes_5day 对齐；Sina 成交量单位为股，这里换算成手。
+    """
+    market = "sh" if str(code).zfill(6).startswith(("6", "9")) else "sz"
+    try:
+        rows = network.direct_client.get_json(
+            SINA_KLINE,
+            params={
+                "symbol": f"{market}{str(code).zfill(6)}",
+                "scale": "5",
+                "ma": "no",
+                "datalen": str(max(60, days * 48 + 20)),
+            },
+            headers={"Referer": "https://finance.sina.com.cn/"},
+            timeout=10.0,
+            attempts=2,
+        )
+    except Exception:  # noqa: BLE001
+        return []
+    if not isinstance(rows, list):
+        return []
+    bars: list[dict[str, Any]] = []
+    for row in rows:
+        stamp = str(row.get("day", ""))
+        if len(stamp) < 16:
+            continue
+        date_text, time_text = stamp[:10], stamp[11:16]
+        if not ("09:30" <= time_text <= "11:30" or "13:00" <= time_text <= "15:00"):
+            continue
+        close = _number(row.get("close"))
+        high = _number(row.get("high"))
+        low = _number(row.get("low"))
+        if close <= 0 or high <= 0 or low <= 0:
+            continue
+        bars.append({
+            "date": date_text,
+            "time": time_text,
+            "open": _number(row.get("open")) or close,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": round(_number(row.get("volume")) / 100.0, 2),
+        })
+    return bars
+
+
 def spot_auction(codes: list[str], target: date, now: datetime) -> dict[str, dict[str, Any]]:
     """09:26—09:30 用一次全市场快照批量取竞价结果，避免逐只请求被限流。
 

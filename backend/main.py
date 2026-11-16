@@ -19,7 +19,7 @@ from .costs import net_return_pct
 from .csv_import import parse_csv, template_csv
 from .doc_samples import build_report, core_flags_for, doc_ranks_for
 from .marks import excluded_for, load_marks, save_marks
-from .data_sources import breadth_from_spot
+from .data_sources import breadth_from_spot, sina_minutes
 from .market_data import QUALITY_NOTES, enrich_dataset, fetch_history, sync_market, trading_days
 from .performance import evaluate_run
 from .sample_data import DEMO_DAY, DEMO_STOCKS
@@ -1725,13 +1725,25 @@ def minutes_5day(code: str, day: str | None = None):
             _MINUTE_CACHE[cache_key] = (_time.time(), payload)
             return payload
 
+    # 新浪 5 分钟接口比东财稳定且响应快；先走它，失败再回退东财。
+    fallback = sina_minutes(code, days=5)
+    if day:
+        fallback = [bar for bar in fallback if bar["date"] == day]
+    if fallback:
+        payload = {"code": code, "bars": fallback}
+        _MINUTE_CACHE[cache_key] = (_time.time(), payload)
+        return payload
+
     from .market_data import numeric, retry_call
     today = datetime.now(db.TZ_CN).date()
     start = (today - timedelta(days=12)).strftime("%Y-%m-%d 09:30:00")
     end = today.strftime("%Y-%m-%d 15:00:00")
-    frame = retry_call(lambda: ak.stock_zh_a_hist_min_em(
-        symbol=code, start_date=start, end_date=end, period="5", adjust=""
-    ), attempts=2)
+    try:
+        frame = retry_call(lambda: ak.stock_zh_a_hist_min_em(
+            symbol=code, start_date=start, end_date=end, period="5", adjust=""
+        ), attempts=2)
+    except Exception:  # noqa: BLE001 - 东财断连时返回空，不阻断缩略图接口
+        frame = None
     if frame is None or frame.empty:
         return {"code": code, "bars": []}
     bars = []
