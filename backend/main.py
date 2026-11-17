@@ -387,7 +387,24 @@ def _quote(code: str) -> dict:
     cached = _QUOTE_CACHE.get(code)
     if cached and now - cached[0] < 15:
         return cached[1]
-    frame = ak.stock_bid_ask_em(symbol=code)
+    try:
+        frame = ak.stock_bid_ask_em(symbol=code)
+    except Exception:
+        from .data_sources import tencent_quotes
+        quote = tencent_quotes([code]).get(code)
+        if not quote:
+            raise
+        out = {
+            "code": code,
+            "price": quote["price"],
+            "pct": quote["pct"],
+            "prev_close": quote["prev_close"],
+            "open": quote["open"],
+            "high": quote["high"],
+            "low": quote["low"],
+        }
+        _QUOTE_CACHE[code] = (now, out)
+        return out
     data = {str(row["item"]): numeric(row["value"]) for _, row in frame.iterrows()}
     out = {
         "code": code,

@@ -7,6 +7,7 @@ const state = {
   toastTimer: null, search: '', sort: 'return_rank', docCheck: null,
   chart: 'intraday', onlyDoc: false, marks: {}, bars: new Map(), fiveBars: new Map(), thumbData: new Map(), quotes: new Map(), isLive: false,
   showAuction: false, loadingThumbs: false, quoteTimer: null, datasetKey: null,
+  autoRefreshTimer: null, lastAutoRefresh: 0, refreshBucket: null,
   closingPoll: null, closingPolled: false, closingTrack: 'all', closingReplayId: null,
   signals: null, signalTimer: null,
 };
@@ -504,8 +505,9 @@ async function ensureMinutes(rows) {
 }
 
 function paintThumbs(rows) {
-  $$('[data-thumb]').forEach(slot => {
-    const item = rows.find(row => row.code === slot.dataset.thumb);
+  $$('[data-thumb], [data-thumb-chart]').forEach(slot => {
+    const code = slot.dataset.thumb || slot.dataset.thumbChart;
+    const item = rows.find(row => row.code === code);
     if (!item) return;
     const bars = state.fiveBars.get(item.code);
     if (bars === undefined) return;
@@ -867,7 +869,7 @@ function renderMarketStatus() {
   $('#sync-message').textContent = job?.message || '免费行情源已就绪';
   $('#sync-progress-bar').style.width = `${progress}%`;
   $('#sync-progress-text').textContent = active ? `${progress}%` : failed ? 'ERROR' : job?.status === 'completed' ? 'SYNCED' : 'IDLE';
-  $('#next-sync').textContent = '09:26 选股 · 15:05 复盘';
+  $('#next-sync').textContent = '09:26 选股 · 盘中每 5 分钟刷新 · 15:05 复盘';
   ['#sync-button', '#data-sync-button'].forEach(selector => { $(selector).disabled = active; $(selector).classList.toggle('loading', active); });
   $('#provider-status').textContent = active ? '同步中' : failed ? '同步失败' : job?.status === 'completed' ? '已更新' : '待同步';
   $('#provider-progress').textContent = job?.total ? `${job.progress} / ${job.total}` : '—';
@@ -1346,6 +1348,54 @@ async function loadDemo() {
   finally { $('#demo-button').disabled = false; }
 }
 function updateClock() { $('#cn-clock').textContent = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date()); }
+
+function marketSession() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Shanghai', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const get = type => parts.find(part => part.type === type)?.value || '';
+  const minutes = Number(get('hour')) * 60 + Number(get('minute'));
+  const tradingDay = !['Sat', 'Sun'].includes(get('weekday'));
+  const open = tradingDay && ((minutes >= 9 * 60 + 25 && minutes <= 11 * 60 + 30)
+    || (minutes >= 13 * 60 && minutes <= 15 * 60));
+  return { open, minutes, bucket: Math.floor(minutes / 5) };
+}
+
+async function refreshMarketData(force = false) {
+  const session = marketSession();
+  if (!session.open && !force) return;
+  if (!force && state.refreshBucket === session.bucket
+    && Date.now() - state.lastAutoRefresh < 5 * 60 * 1000) return;
+  state.refreshBucket = session.bucket;
+  state.lastAutoRefresh = Date.now();
+  try {
+    if ($('#view-closing')?.classList.contains('active')) {
+      // 尾盘只在实际尾盘窗口自动重扫，历史回放不自动覆盖用户选择。
+      if (!state.closingReplayId && session.minutes >= 14 * 60 + 40) await refreshClosing(true);
+      return;
+    }
+    if (!state.result) return;
+    const rows = state.rowsCache?.length ? state.rowsCache : visibleRows();
+    if (!rows.length) return;
+    if (state.isLive) {
+      await loadQuotes(rows);
+      if (state.chart === 'intraday' || state.chart === 'five') {
+        rows.forEach(item => state.fiveBars.delete(item.code));
+        await loadThumbs(rows);
+      }
+    }
+    await refreshMarketStatus();
+  } catch (error) { /* 静默失败，保留上一次可见数据 */ }
+}
+
+function startMarketAutoRefresh() {
+  clearInterval(state.autoRefreshTimer);
+  state.refreshBucket = marketSession().bucket;
+  state.autoRefreshTimer = setInterval(() => refreshMarketData(false), 30000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshMarketData(false);
+  });
+}
 function bindEvents() {
   $$('.nav-item').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
   $('[data-go="workspace"]').addEventListener('click', () => setView('workspace'));
@@ -1434,6 +1484,7 @@ async function init() {
     const initial = location.hash.replace('#', '');
     if (['history', 'data', 'rules', 'closing'].includes(initial)) setView(initial);
     if (state.marketStatus.active && state.marketStatus.latest_job) startPolling(state.marketStatus.latest_job.id);
+    startMarketAutoRefresh();
   } catch (error) {
     toast(`无法连接后端服务：${error.message}`, true);
     $('#result-table').innerHTML = emptyState('服务未连接', '请通过 start.bat 启动本地服务后刷新页面。');
