@@ -47,6 +47,16 @@ chmod +x start.command
 ## 每天早盘
 
 - 保持程序在前一晚或至少 09:15 前运行。
+- 可选：安装登录自启动，避免忘记打开：
+  ```bash
+  chmod +x install_autostart.command
+  ./install_autostart.command
+  ```
+  卸载：
+  ```bash
+  ./uninstall_autostart.command
+  ```
+  自启动服务日志在 `~/Library/Logs/quanttrade.log`。
 - 09:26:15 自动抓取 09:25 集合竞价并选股。
 - 09:26—11:30 每 2 分钟检查一次：如果当日数据集缺失或首次同步失败，会自动补抓。
 - 09:25—11:30、13:00—15:00 页面自动刷新：现价约 20 秒，日内/五日缩略图每 5 分钟。

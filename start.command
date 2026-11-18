@@ -2,6 +2,9 @@
 set -e
 cd "$(dirname "$0")"
 
+NO_BROWSER=0
+if [ "${1:-}" = "--no-browser" ]; then NO_BROWSER=1; fi
+
 PY="${PYTHON:-python3}"
 if ! command -v "$PY" >/dev/null 2>&1; then
   echo "未找到 python3。请先安装 Python 3.10+：https://www.python.org/downloads/macos/"
@@ -18,7 +21,7 @@ fi
 
 # 已在运行就直接打开页面，不重复占端口。
 if curl -fsS --max-time 2 http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
-  open "http://127.0.0.1:8000" >/dev/null 2>&1 || true
+  [ "$NO_BROWSER" = "1" ] || open "http://127.0.0.1:8000" >/dev/null 2>&1 || true
   exit 0
 fi
 
@@ -31,5 +34,7 @@ if [ ! -x .venv/bin/python ]; then
 fi
 
 echo "启动 A9 Markets：http://127.0.0.1:8000"
-( sleep 2; open "http://127.0.0.1:8000" >/dev/null 2>&1 || true ) &
+if [ "$NO_BROWSER" != "1" ]; then
+  ( sleep 2; open "http://127.0.0.1:8000" >/dev/null 2>&1 || true ) &
+fi
 exec env PYTHONUNBUFFERED=1 .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
