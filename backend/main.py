@@ -128,6 +128,19 @@ def execute_sync(job_id: str, request: SyncRequest) -> None:
         sync_lock.release()
 
 
+def auto_sync_tick() -> None:
+    """09:26 之后每 5 分钟补抓一次：进程刚启动、睡眠唤醒或首次同步失败时兜底。"""
+    now = datetime.now(db.TZ_CN)
+    if now.weekday() >= 5 or not (time(9, 26) <= now.time() <= time(11, 30)):
+        return
+    if sync_lock.locked():
+        return
+    existing = db.latest_dataset_for_day(now.date().isoformat())
+    if existing and int(existing.get("stock_count") or 0) >= 30:
+        return
+    start_sync(SyncRequest())
+
+
 def start_sync(request: SyncRequest) -> str | None:
     if not sync_lock.acquire(blocking=False):
         return None
@@ -153,6 +166,16 @@ async def lifespan(_: FastAPI):
         hour=9,
         minute=26,
         second=15,
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        auto_sync_tick,
+        "cron",
+        id="morning-catchup",
+        day_of_week="mon-fri",
+        hour="9-11",
+        minute="*/2",
+        second=20,
         replace_existing=True,
     )
     scheduler.add_job(
@@ -241,7 +264,7 @@ def market_status():
     return {
         "provider": "AKShare / 东方财富 + 腾讯行情",
         "requires_api_key": False,
-        "schedule": "交易日 09:26:15 自动同步",
+        "schedule": "交易日 09:26:15 自动同步 · 09:26—11:30 每 2 分钟补抓",
         "next_run": str(scheduled.next_run_time) if scheduled else None,
         "active": sync_lock.locked(),
         "latest_job": db.get_latest_sync_job(),
