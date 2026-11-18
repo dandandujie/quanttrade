@@ -926,8 +926,11 @@ async function requestSync(tradingDay) {
     startPolling(response.job_id);
     toast(day ? `已开始回放 ${day} 的集合竞价` : '已开始同步最近交易日免费行情');
   } catch (error) {
-    if (error.status === 409) { const status = await refreshMarketStatus(); if (status.latest_job) startPolling(status.latest_job.id); }
-    else toast(error.message, true);
+    if (error.status === 409) {
+      const status = await refreshMarketStatus();
+      if (status.latest_job) startPolling(status.latest_job.id);
+      toast('已有行情同步任务在运行，正在等待完成…');
+    } else toast(error.message, true);
   }
 }
 async function enrichDataset() {
@@ -1361,6 +1364,20 @@ function marketSession() {
   return { open, minutes, bucket: Math.floor(minutes / 5) };
 }
 
+async function adoptCompletedSync(job) {
+  if (!job || job.status !== 'completed' || !job.dataset_id || !job.run_id) return false;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  if (job.trading_day !== today || String(job.dataset_id) === String(state.selectedDataset)) return false;
+  state.selectedDataset = job.dataset_id;
+  await refreshDatasets();
+  state.result = await api(`/api/runs/${job.run_id}`);
+  state.config = mergeConfig(state.result.config);
+  renderDatasetOptions();
+  renderResult();
+  toast(`早盘数据已更新 · ${job.trading_day} · 策略已自动载入`);
+  return true;
+}
+
 async function refreshMarketData(force = false) {
   const session = marketSession();
   if (!session.open && !force) return;
@@ -1374,6 +1391,8 @@ async function refreshMarketData(force = false) {
       if (!state.closingReplayId && session.minutes >= 14 * 60 + 40) await refreshClosing(true);
       return;
     }
+    const status = await refreshMarketStatus();
+    if (await adoptCompletedSync(status.latest_job)) return;
     if (!state.result) return;
     const rows = state.rowsCache?.length ? state.rowsCache : visibleRows();
     if (!rows.length) return;
@@ -1384,7 +1403,6 @@ async function refreshMarketData(force = false) {
         await loadThumbs(rows);
       }
     }
-    await refreshMarketStatus();
   } catch (error) { /* 静默失败，保留上一次可见数据 */ }
 }
 
